@@ -1,0 +1,16 @@
+# Netlify Headers Configuration
+# Cache the ONNX model for 1 year (immutable) to reduce bandwidth costs
+
+/model/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Cache static assets
+/*.css
+  Cache-Control: public, max-age=86400
+
+/*.js
+  Cache-Control: public, max-age=86400
+
+# Don't cache HTML
+/*.html
+  Cache-Control: no-cache

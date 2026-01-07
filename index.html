@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>EstacaScan - Contador de Estacas</title>
+    <title>EstacaScan - Contador de Estacas con IA</title>
     <meta name="description"
         content="Aplicación para contar estacas automáticamente usando inteligencia artificial YOLO v8">
     <meta name="theme-color" content="#0a1929">
@@ -18,179 +18,86 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-    <link rel="stylesheet" href="index.css">
+    <link rel="stylesheet" href="landing.css">
 </head>
 
 <body>
-    <!-- Header -->
-    <header class="header">
-        <div class="logo">
-            <img src="favicon.png" alt="EstacaScan" class="logo-icon">
-            <span class="logo-estaca">ESTACA</span><span class="logo-scan">SCAN</span>
-        </div>
-        <div class="status" id="status">
-            <span class="status-text">LISTO</span>
-            <span class="status-dot"></span>
-        </div>
-    </header>
+    <div class="landing-container">
+        <!-- Fondo con partículas sutiles -->
+        <div class="bg-particles" id="bg-particles"></div>
 
-    <!-- Main Content -->
-    <main class="main">
-        <!-- Upload Screen -->
-        <section class="screen screen-upload" id="screen-upload">
-            <div class="upload-area" id="upload-area">
-                <div class="upload-icon">
-                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                        stroke-width="1.5">
-                        <path
-                            d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        <!-- Contenido principal -->
+        <main class="landing-content">
+            <!-- Logo animado con plantita -->
+            <div class="logo-container">
+                <div class="plant-animation">
+                    <svg class="plant-svg" viewBox="0 0 100 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <!-- Maceta -->
+                        <path class="pot" d="M30 85 L70 85 L65 110 L35 110 Z" fill="#8B5A2B" />
+                        <path class="pot-rim" d="M25 80 L75 80 L75 88 L25 88 Z" fill="#A0522D" />
+                        <ellipse class="pot-soil" cx="50" cy="82" rx="20" ry="4" fill="#3D2314" />
+
+                        <!-- Tallo principal -->
+                        <path class="stem stem-main" d="M50 80 Q50 60 50 45" stroke="#2D5A27" stroke-width="4"
+                            stroke-linecap="round" />
+
+                        <!-- Hojas -->
+                        <g class="leaf leaf-1">
+                            <path d="M50 65 Q35 55 30 40 Q45 45 50 65" fill="#34D399" />
+                            <path d="M50 65 Q42 52 30 40" stroke="#2D5A27" stroke-width="1" fill="none" />
+                        </g>
+                        <g class="leaf leaf-2">
+                            <path d="M50 55 Q65 45 75 30 Q55 40 50 55" fill="#10B981" />
+                            <path d="M50 55 Q62 42 75 30" stroke="#2D5A27" stroke-width="1" fill="none" />
+                        </g>
+                        <g class="leaf leaf-3">
+                            <path d="M50 45 Q30 30 25 15 Q45 25 50 45" fill="#34D399" />
+                            <path d="M50 45 Q37 30 25 15" stroke="#2D5A27" stroke-width="1" fill="none" />
+                        </g>
+                        <g class="leaf leaf-4">
+                            <path d="M50 35 Q70 20 80 5 Q55 20 50 35" fill="#10B981" />
+                            <path d="M50 35 Q65 17 80 5" stroke="#2D5A27" stroke-width="1" fill="none" />
+                        </g>
                     </svg>
                 </div>
-                <p class="upload-text">Arrastra una imagen o</p>
-                <div class="upload-buttons">
-                    <label class="btn btn-primary" for="file-input">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2">
-                            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" />
-                        </svg>
-                        Subir Archivo
-                    </label>
-                    <button class="btn btn-secondary" id="btn-camera">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2">
-                            <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" />
-                            <circle cx="12" cy="13" r="4" />
-                        </svg>
-                        Cámara
-                    </button>
-                </div>
-                <input type="file" id="file-input" accept="image/*" hidden>
-                <input type="file" id="camera-input" accept="image/*" capture="environment" hidden>
-            </div>
-        </section>
 
-        <!-- Loading Screen -->
-        <section class="screen screen-loading hidden" id="screen-loading">
-            <div class="loading-container">
-                <div class="spinner"></div>
-                <p class="loading-text" id="loading-text">Cargando modelo...</p>
-                <div class="progress-bar">
-                    <div class="progress-fill" id="progress-fill"></div>
-                </div>
+                <h1 class="app-title">
+                    <span class="title-estaca">ESTACA</span><span class="title-scan">SCAN</span>
+                </h1>
+                <p class="app-subtitle">Contador inteligente de estacas</p>
             </div>
-        </section>
 
-        <!-- Result Screen -->
-        <section class="screen screen-result hidden" id="screen-result">
-            <div class="image-container" id="image-container">
-                <canvas id="canvas"></canvas>
-                <div class="toolbar">
-                    <button class="toolbar-btn" id="btn-add-mode" title="Agregar estaca manualmente (o usa Ctrl+Click)">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2">
-                            <circle cx="12" cy="12" r="10" />
-                            <path d="M12 8v8M8 12h8" />
-                        </svg>
-                        <span class="toolbar-label">Agregar</span>
-                    </button>
-                    <div class="toolbar-divider"></div>
-                    <button class="toolbar-btn" id="btn-zoom-in" title="Acercar">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2">
-                            <circle cx="11" cy="11" r="8" />
-                            <path d="M21 21l-4.35-4.35M11 8v6M8 11h6" />
-                        </svg>
-                    </button>
-                    <button class="toolbar-btn" id="btn-zoom-out" title="Alejar">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2">
-                            <circle cx="11" cy="11" r="8" />
-                            <path d="M21 21l-4.35-4.35M8 11h6" />
-                        </svg>
-                    </button>
-                    <button class="toolbar-btn" id="btn-zoom-reset" title="Restablecer zoom">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2">
-                            <path d="M3 12a9 9 0 109-9 9.75 9.75 0 00-6.74 2.74L3 8" />
-                            <path d="M3 3v5h5" />
-                        </svg>
-                    </button>
+            <!-- Indicador de carga del modelo -->
+            <div class="model-status" id="model-status">
+                <div class="model-loading">
+                    <div class="loading-dot"></div>
+                    <span id="model-status-text">Preparando modelo...</span>
                 </div>
-                <div class="help-tip" id="help-tip">
-                    <span>💡 Tip: Usa <kbd>Ctrl</kbd>+<kbd>Click</kbd> para agregar estacas faltantes</span>
+                <div class="model-progress">
+                    <div class="model-progress-bar" id="model-progress-bar"></div>
                 </div>
             </div>
-        </section>
 
-        <!-- Review Screen -->
-        <section class="screen screen-review hidden" id="screen-review">
-            <div class="review-header">
-                <span class="review-title">VERIFICACIÓN EN CURSO</span>
-                <div class="review-progress">
-                    <div class="review-progress-bar">
-                        <div class="review-progress-fill" id="review-progress-fill"></div>
-                    </div>
-                    <span class="review-count" id="review-count">1 / 9</span>
-                </div>
-            </div>
-            <div class="review-image-container">
-                <canvas id="review-canvas"></canvas>
-            </div>
-            <div class="review-actions">
-                <button class="review-btn review-btn-reject" id="btn-reject">
-                    <div class="review-btn-icon">
-                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2.5">
-                            <path d="M18 6L6 18M6 6l12 12" />
-                        </svg>
-                    </div>
-                    <span>DESCARTAR</span>
-                </button>
-                <button class="review-btn review-btn-accept" id="btn-accept">
-                    <div class="review-btn-icon">
-                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2.5">
-                            <path d="M20 6L9 17l-5-5" />
-                        </svg>
-                    </div>
-                    <span>ES ESTACA</span>
-                </button>
-            </div>
-        </section>
-    </main>
+            <!-- Botón de inicio -->
+            <button class="btn-start" id="btn-start" disabled>
+                <span class="btn-text">Iniciar</span>
+                <svg class="btn-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2">
+                    <path d="M5 12h14M12 5l7 7-7 7" />
+                </svg>
+            </button>
 
-    <!-- Footer Stats -->
-    <footer class="footer" id="footer">
-        <div class="stats">
-            <div class="stat-main">
-                <span class="stat-label">TOTAL CONFIRMADO</span>
-                <span class="stat-value" id="total-count">0</span>
-            </div>
-            <div class="stat-secondary">
-                <div class="stat-item">
-                    <span class="stat-badge stat-badge-green" id="accepted-count">ACEPTADAS: 0</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-badge stat-badge-gray" id="ia-base-count">IA BASE: 0</span>
-                </div>
-            </div>
-        </div>
-        <button class="btn-review hidden" id="btn-start-review">
-            <span class="review-badge" id="doubt-count">0</span>
-            REVISAR DUDAS
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M5 12h14M12 5l7 7-7 7" />
-            </svg>
-        </button>
-        <button class="btn-new-analysis hidden" id="btn-new-analysis">
-            NUEVO ANÁLISIS
-        </button>
-    </footer>
+            <!-- Indicador de instrucciones -->
+            <p class="landing-hint">Escanea tus estacas con inteligencia artificial</p>
+        </main>
 
-    <!-- Toast Notifications -->
-    <div class="toast-container" id="toast-container"></div>
+        <!-- Footer minimalista -->
+        <footer class="landing-footer">
+            <span>Powered by YOLO v8</span>
+        </footer>
+    </div>
 
-    <script src="app.js" type="module"></script>
+    <script src="landing.js" type="module"></script>
 </body>
 
 </html>

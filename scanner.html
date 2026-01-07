@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>EstacaScan - Contador de Estacas</title>
+    <meta name="description"
+        content="Aplicación para contar estacas automáticamente usando inteligencia artificial YOLO v8">
+    <meta name="theme-color" content="#0a1929">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="favicon.png">
+    <link rel="apple-touch-icon" href="favicon.png">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="index.css">
+</head>
+
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="logo">
+            <img src="favicon.png" alt="EstacaScan" class="logo-icon">
+            <span class="logo-estaca">ESTACA</span><span class="logo-scan">SCAN</span>
+        </div>
+        <div class="status" id="status">
+            <span class="status-text">LISTO</span>
+            <span class="status-dot"></span>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main">
+        <!-- Upload Screen -->
+        <section class="screen screen-upload" id="screen-upload">
+            <div class="upload-area" id="upload-area">
+                <div class="upload-icon">
+                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="1.5">
+                        <path
+                            d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                </div>
+                <p class="upload-text">Arrastra una imagen o</p>
+                <div class="upload-buttons">
+                    <label class="btn btn-primary" for="file-input">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" />
+                        </svg>
+                        Subir Archivo
+                    </label>
+                    <button class="btn btn-secondary" id="btn-camera">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" />
+                            <circle cx="12" cy="13" r="4" />
+                        </svg>
+                        Cámara
+                    </button>
+                </div>
+                <input type="file" id="file-input" accept="image/*" hidden>
+                <input type="file" id="camera-input" accept="image/*" capture="environment" hidden>
+            </div>
+        </section>
+
+        <!-- Loading Screen -->
+        <section class="screen screen-loading hidden" id="screen-loading">
+            <div class="loading-container">
+                <div class="spinner"></div>
+                <p class="loading-text" id="loading-text">Cargando modelo...</p>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progress-fill"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Result Screen -->
+        <section class="screen screen-result hidden" id="screen-result">
+            <div class="image-container" id="image-container">
+                <canvas id="canvas"></canvas>
+                <div class="toolbar">
+                    <button class="toolbar-btn" id="btn-add-mode" title="Agregar estaca manualmente (o usa Ctrl+Click)">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <circle cx="12" cy="12" r="10" />
+                            <path d="M12 8v8M8 12h8" />
+                        </svg>
+                        <span class="toolbar-label">Agregar</span>
+                    </button>
+                    <div class="toolbar-divider"></div>
+                    <button class="toolbar-btn" id="btn-zoom-in" title="Acercar">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <circle cx="11" cy="11" r="8" />
+                            <path d="M21 21l-4.35-4.35M11 8v6M8 11h6" />
+                        </svg>
+                    </button>
+                    <button class="toolbar-btn" id="btn-zoom-out" title="Alejar">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <circle cx="11" cy="11" r="8" />
+                            <path d="M21 21l-4.35-4.35M8 11h6" />
+                        </svg>
+                    </button>
+                    <button class="toolbar-btn" id="btn-zoom-reset" title="Restablecer zoom">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M3 12a9 9 0 109-9 9.75 9.75 0 00-6.74 2.74L3 8" />
+                            <path d="M3 3v5h5" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="help-tip" id="help-tip">
+                    <span>💡 Tip: Usa <kbd>Ctrl</kbd>+<kbd>Click</kbd> para agregar estacas faltantes</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Review Screen -->
+        <section class="screen screen-review hidden" id="screen-review">
+            <div class="review-header">
+                <span class="review-title">VERIFICACIÓN EN CURSO</span>
+                <div class="review-progress">
+                    <div class="review-progress-bar">
+                        <div class="review-progress-fill" id="review-progress-fill"></div>
+                    </div>
+                    <span class="review-count" id="review-count">1 / 9</span>
+                </div>
+            </div>
+            <div class="review-image-container">
+                <canvas id="review-canvas"></canvas>
+            </div>
+            <div class="review-actions">
+                <button class="review-btn review-btn-reject" id="btn-reject">
+                    <div class="review-btn-icon">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2.5">
+                            <path d="M18 6L6 18M6 6l12 12" />
+                        </svg>
+                    </div>
+                    <span>DESCARTAR</span>
+                </button>
+                <button class="review-btn review-btn-accept" id="btn-accept">
+                    <div class="review-btn-icon">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2.5">
+                            <path d="M20 6L9 17l-5-5" />
+                        </svg>
+                    </div>
+                    <span>ES ESTACA</span>
+                </button>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer Stats -->
+    <footer class="footer" id="footer">
+        <div class="stats">
+            <div class="stat-main">
+                <span class="stat-label">TOTAL CONFIRMADO</span>
+                <span class="stat-value" id="total-count">0</span>
+            </div>
+            <div class="stat-secondary">
+                <div class="stat-item">
+                    <span class="stat-badge stat-badge-green" id="accepted-count">ACEPTADAS: 0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-badge stat-badge-gray" id="ia-base-count">IA BASE: 0</span>
+                </div>
+            </div>
+        </div>
+        <button class="btn-review hidden" id="btn-start-review">
+            <span class="review-badge" id="doubt-count">0</span>
+            REVISAR DUDAS
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M5 12h14M12 5l7 7-7 7" />
+            </svg>
+        </button>
+        <button class="btn-new-analysis hidden" id="btn-new-analysis">
+            NUEVO ANÁLISIS
+        </button>
+    </footer>
+
+    <!-- Toast Notifications -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <script src="app.js" type="module"></script>
+</body>
+
+</html>
