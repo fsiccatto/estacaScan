@@ -1135,19 +1135,64 @@ function initEventListeners() {
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
 
-    // Touch events for mobile
+    // Touch events for mobile (pan + pinch-to-zoom)
     let touchStartX = 0;
     let touchStartY = 0;
+    let lastTouchDistance = 0;
+    let isTouchDragging = false;
+    let wasTouchDragging = false;
+    let touchDragStartX = 0;
+    let touchDragStartY = 0;
+    let lastDrawTime = 0;
+    const TOUCH_THROTTLE_MS = 16; // ~60fps
+
+    function getTouchDistance(touches) {
+        const dx = touches[0].clientX - touches[1].clientX;
+        const dy = touches[0].clientY - touches[1].clientY;
+        return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    function getTouchCenter(touches) {
+        return {
+            x: (touches[0].clientX + touches[1].clientX) / 2,
+            y: (touches[0].clientY + touches[1].clientY) / 2
+        };
+    }
 
     elements.canvas.addEventListener('touchstart', (e) => {
+        e.preventDefault(); // Prevent browser gestures
+        
         if (e.touches.length === 1) {
+            // Single finger - pan
+            isTouchDragging = true;
+            wasTouchDragging = false;
             touchStartX = e.touches[0].clientX;
             touchStartY = e.touches[0].clientY;
+            touchDragStartX = e.touches[0].clientX;
+            touchDragStartY = e.touches[0].clientY;
+        } else if (e.touches.length === 2) {
+            // Two fingers - pinch zoom
+            isTouchDragging = false;
+            lastTouchDistance = getTouchDistance(e.touches);
         }
-    });
+    }, { passive: false });
 
     elements.canvas.addEventListener('touchmove', (e) => {
-        if (e.touches.length === 1) {
+        e.preventDefault();
+        
+        // Throttle for performance
+        const now = Date.now();
+        if (now - lastDrawTime < TOUCH_THROTTLE_MS) return;
+        lastDrawTime = now;
+
+        if (e.touches.length === 1 && isTouchDragging) {
+            // Single finger pan
+            const movedX = Math.abs(e.touches[0].clientX - touchDragStartX);
+            const movedY = Math.abs(e.touches[0].clientY - touchDragStartY);
+            if (movedX > DRAG_THRESHOLD || movedY > DRAG_THRESHOLD) {
+                wasTouchDragging = true;
+            }
+
             const deltaX = (e.touches[0].clientX - touchStartX) / state.zoom;
             const deltaY = (e.touches[0].clientY - touchStartY) / state.zoom;
 
@@ -1158,6 +1203,47 @@ function initEventListeners() {
             touchStartY = e.touches[0].clientY;
 
             drawCanvas();
+        } else if (e.touches.length === 2) {
+            // Pinch to zoom
+            const currentDistance = getTouchDistance(e.touches);
+            
+            if (lastTouchDistance > 0) {
+                const scale = currentDistance / lastTouchDistance;
+                const newZoom = state.zoom * scale;
+                
+                // Clamp zoom
+                state.zoom = Math.max(0.3, Math.min(5, newZoom));
+                drawCanvas();
+            }
+            
+            lastTouchDistance = currentDistance;
+        }
+    }, { passive: false });
+
+    elements.canvas.addEventListener('touchend', (e) => {
+        if (e.touches.length === 0) {
+            // All fingers lifted
+            if (!wasTouchDragging && isTouchDragging) {
+                // It was a tap, not a drag - treat as click
+                // Create a synthetic click event
+                const touch = e.changedTouches[0];
+                const clickEvent = {
+                    clientX: touch.clientX,
+                    clientY: touch.clientY,
+                    ctrlKey: false,
+                    metaKey: false
+                };
+                handleCanvasClick(clickEvent);
+            }
+            isTouchDragging = false;
+            wasTouchDragging = false;
+            lastTouchDistance = 0;
+        } else if (e.touches.length === 1) {
+            // One finger still on screen, switch to pan mode
+            isTouchDragging = true;
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+            lastTouchDistance = 0;
         }
     });
 
