@@ -1161,7 +1161,7 @@ function initEventListeners() {
 
     elements.canvas.addEventListener('touchstart', (e) => {
         e.preventDefault(); // Prevent browser gestures
-        
+
         if (e.touches.length === 1) {
             // Single finger - pan
             isTouchDragging = true;
@@ -1179,7 +1179,7 @@ function initEventListeners() {
 
     elements.canvas.addEventListener('touchmove', (e) => {
         e.preventDefault();
-        
+
         // Throttle for performance
         const now = Date.now();
         if (now - lastDrawTime < TOUCH_THROTTLE_MS) return;
@@ -1193,8 +1193,10 @@ function initEventListeners() {
                 wasTouchDragging = true;
             }
 
-            const deltaX = (e.touches[0].clientX - touchStartX) / state.zoom;
-            const deltaY = (e.touches[0].clientY - touchStartY) / state.zoom;
+            // Increase pan sentivity for smoother/faster mobile panning
+            const PAN_FACTOR = 2.0; // Higher = faster panning
+            const deltaX = ((e.touches[0].clientX - touchStartX) / state.zoom) * PAN_FACTOR;
+            const deltaY = ((e.touches[0].clientY - touchStartY) / state.zoom) * PAN_FACTOR;
 
             state.panX += deltaX;
             state.panY += deltaY;
@@ -1206,16 +1208,16 @@ function initEventListeners() {
         } else if (e.touches.length === 2) {
             // Pinch to zoom
             const currentDistance = getTouchDistance(e.touches);
-            
+
             if (lastTouchDistance > 0) {
                 const scale = currentDistance / lastTouchDistance;
                 const newZoom = state.zoom * scale;
-                
+
                 // Clamp zoom
                 state.zoom = Math.max(0.3, Math.min(5, newZoom));
                 drawCanvas();
             }
-            
+
             lastTouchDistance = currentDistance;
         }
     }, { passive: false });
@@ -1268,9 +1270,29 @@ function initEventListeners() {
 }
 
 // ===============================================
+// Background Particles
+// ===============================================
+function createParticles() {
+    const bgParticles = document.getElementById('bg-particles');
+    if (!bgParticles) return;
+
+    const count = 20;
+    for (let i = 0; i < count; i++) {
+        const particle = document.createElement('div');
+        particle.className = 'particle';
+        particle.style.left = `${Math.random() * 100}%`;
+        particle.style.top = `${Math.random() * 100}%`;
+        particle.style.animationDelay = `${Math.random() * 15}s`;
+        particle.style.animationDuration = `${10 + Math.random() * 10}s`;
+        bgParticles.appendChild(particle);
+    }
+}
+
+// ===============================================
 // Initialize
 // ===============================================
 function init() {
+    createParticles(); // Add animated background
     showScreen('upload');
     elements.footer.style.display = 'none';
     initEventListeners();

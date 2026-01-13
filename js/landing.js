@@ -184,6 +184,35 @@ function updateProgress(text, percent) {
     }
 }
 
+// Plant animation replay
+function replayPlantAnimation() {
+    const plantSvg = document.querySelector('.plant-svg');
+    if (!plantSvg) return;
+
+    const stem = plantSvg.querySelector('.stem-main');
+    const leaves = plantSvg.querySelectorAll('.leaf');
+    const potElements = plantSvg.querySelectorAll('.pot, .pot-rim, .pot-soil');
+
+    // Reset animations
+    if (stem) {
+        stem.style.animation = 'none';
+        void stem.offsetWidth;
+        stem.style.animation = '';
+    }
+
+    leaves.forEach(leaf => {
+        leaf.style.animation = 'none';
+        void leaf.offsetWidth;
+        leaf.style.animation = '';
+    });
+
+    potElements.forEach(el => {
+        el.style.animation = 'none';
+        void el.offsetWidth;
+        el.style.animation = '';
+    });
+}
+
 async function init() {
     // Create background particles
     createParticles();
@@ -195,6 +224,17 @@ async function init() {
         // Even if preload fails, let them try anyway
         elements.btnStart.disabled = false;
         elements.modelStatusText.textContent = 'Click para continuar';
+    }
+
+    // Add plant click handler to replay animation
+    const plantContainer = document.querySelector('.plant-animation');
+    if (plantContainer) {
+        plantContainer.style.cursor = 'pointer';
+        plantContainer.addEventListener('click', replayPlantAnimation);
+        plantContainer.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            replayPlantAnimation();
+        });
     }
 }
 
