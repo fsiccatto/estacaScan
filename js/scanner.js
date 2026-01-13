@@ -737,8 +737,8 @@ function drawDoubtCrop(doubt) {
     const ctx = elements.reviewCanvas.getContext('2d');
     const img = state.image;
 
-    // Calculate crop area with padding
-    const padding = 50;
+    // Calculate crop area with MORE padding for context
+    const padding = 150; // Increased from 50px for better context
     const width = doubt.x2 - doubt.x1;
     const height = doubt.y2 - doubt.y1;
 
@@ -747,8 +747,8 @@ function drawDoubtCrop(doubt) {
     const cropWidth = Math.min(img.width - cropX, width + padding * 2);
     const cropHeight = Math.min(img.height - cropY, height + padding * 2);
 
-    // Set canvas size (max 400x400)
-    const maxSize = 400;
+    // Set canvas size (increased to 500x500 for better visibility)
+    const maxSize = 500;
     const scale = Math.min(maxSize / cropWidth, maxSize / cropHeight);
     elements.reviewCanvas.width = cropWidth * scale;
     elements.reviewCanvas.height = cropHeight * scale;
