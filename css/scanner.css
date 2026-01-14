@@ -305,13 +305,10 @@ body {
     align-items: center;
     justify-content: center;
     overflow: hidden;
-    /* Semi-transparent gradient to show particles behind */
     background: linear-gradient(135deg, rgba(13, 33, 55, 0.6), rgba(10, 25, 41, 0.8));
     backdrop-filter: blur(8px);
     border-radius: var(--radius-lg);
     touch-action: none;
-    padding: 24px;
-    /* Add padding to create space around image for particles */
 }
 
 #canvas {
@@ -321,7 +318,6 @@ body {
     border-radius: var(--radius-md);
     cursor: grab;
     box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
-    /* Add shadow to make image stand out from background */
 }
 
 #canvas:active {
@@ -493,7 +489,6 @@ body {
     max-height: 100%;
     border-radius: var(--radius-lg);
     border: 3px solid rgba(245, 158, 11, 0.5);
-    /* Soft orange/amber instead of bright green */
     box-shadow: var(--shadow-lg), 0 0 40px rgba(245, 158, 11, 0.15);
 }
 
@@ -572,12 +567,11 @@ body {
     color: white;
 }
 
-/* Footer */
 .footer {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 20px 24px;
+    padding: 10px 24px;
     background: var(--color-bg-light);
     border-top: 1px solid var(--color-border);
     flex-shrink: 0;
