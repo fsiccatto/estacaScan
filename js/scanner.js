@@ -400,6 +400,9 @@ class AppState {
     get manuallyAdded() {
         return this.confirmedDetections.filter(d => d.isManual).length;
     }
+
+    // Store hash of last processed image to prevent duplicates
+    lastImageHash = null;
 }
 
 const state = new AppState();
@@ -528,10 +531,38 @@ function handleFileSelect(file) {
     reader.readAsDataURL(file);
 }
 
+// Generate simple hash for image duplicate detection
+function generateImageHash(dataUrl) {
+    // Use a combination of file size and content sample
+    const size = dataUrl.length;
+    const sample = dataUrl.substring(0, 1000) + dataUrl.substring(dataUrl.length - 1000);
+
+    // Simple hash function
+    let hash = 0;
+    for (let i = 0; i < sample.length; i++) {
+        const char = sample.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash; // Convert to 32-bit integer
+    }
+
+    return `${size}_${hash}`;
+}
+
 // ===============================================
 // Image Processing
 // ===============================================
 async function processImage(imageDataUrl) {
+    // Check for duplicate image
+    const imageHash = generateImageHash(imageDataUrl);
+    if (state.lastImageHash === imageHash) {
+        showToast('⚠️ Esta imagen ya fue procesada', 'error');
+        showScreen('upload');
+        setStatus('LISTO', 'active');
+        return;
+    }
+
+    state.lastImageHash = imageHash; // Store for next check
+
     showScreen('loading');
     setStatus('ANALIZANDO', 'loading');
 
@@ -1082,6 +1113,10 @@ function newAnalysis() {
     // Reset metadata form
     elements.inputNotes.value = '';
 
+    // Reset image hash to allow new uploads
+    state.lastImageHash = null;
+
+
     // Reset add mode button
     if (elements.btnAddMode) {
         elements.btnAddMode.classList.remove('active');
@@ -1373,6 +1408,20 @@ async function saveAnalysis() {
         showToast('No hay análisis para guardar');
         return;
     }
+
+    // Validate required field: harvester
+    if (!elements.selectHarvester.value) {
+        showToast('⚠️ Debe seleccionar un cosechador', 'error');
+        elements.selectHarvester.style.borderColor = '#ef4444';
+        elements.selectHarvester.focus();
+
+        // Remove error highlight after 3 seconds
+        setTimeout(() => {
+            elements.selectHarvester.style.borderColor = '';
+        }, 3000);
+        return;
+    }
+
 
     try {
         elements.btnSaveAnalysis.classList.add('saving');
