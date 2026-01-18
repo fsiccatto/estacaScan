@@ -122,4 +122,26 @@ export class AnalysisService {
             throw error;
         }
     }
+
+    /**
+     * Eliminar un análisis
+     * @param {string} id - ID del análisis
+     * @returns {Promise<void>}
+     */
+    static async delete(id) {
+        try {
+            const { error } = await supabase
+                .from('analysis')
+                .delete()
+                .eq('id', id);
+
+            if (error) throw error;
+
+            console.log('✅ Análisis eliminado:', id);
+
+        } catch (error) {
+            console.error('❌ Error al eliminar análisis:', error);
+            throw error;
+        }
+    }
 }

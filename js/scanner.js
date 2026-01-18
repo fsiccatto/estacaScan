@@ -463,6 +463,20 @@ const elements = {
     inputNotes: document.getElementById('input-notes'),
     btnSaveAnalysis: document.getElementById('btn-save-analysis'),
 
+    // History Modal
+    btnHistory: document.getElementById('btn-history'),
+    historyModal: document.getElementById('history-modal'),
+    btnCloseHistory: document.getElementById('btn-close-history'),
+    historyList: document.getElementById('history-list'),
+
+    // Custom Dropdown Elements
+    historyFilterHarvester: document.getElementById('history-filter-harvester'), // The input
+    harvesterSelectContainer: document.getElementById('harvester-select-container'),
+    harvesterSelectTrigger: document.getElementById('harvester-select-trigger'),
+    harvesterSelectOptions: document.getElementById('harvester-select-options'),
+
+    historyFilterDate: document.getElementById('history-filter-date'),
+
     // Status
     status: document.getElementById('status'),
 
@@ -1322,6 +1336,19 @@ function initEventListeners() {
     // Save analysis
     elements.btnSaveAnalysis.addEventListener('click', saveAnalysis);
 
+    // History modal
+    elements.btnHistory.addEventListener('click', openHistoryModal);
+    elements.btnCloseHistory.addEventListener('click', closeHistoryModal);
+    elements.historyModal.addEventListener('click', (e) => {
+        if (e.target === elements.historyModal) closeHistoryModal();
+    });
+
+    // Custom Dropdown Logic
+    initCustomDropdown();
+
+    // Date filter
+    elements.historyFilterDate.addEventListener('change', loadHistoryList);
+
     // Keyboard shortcuts
     document.addEventListener('keydown', (e) => {
         if (elements.screenReview.classList.contains('hidden')) return;
@@ -1330,6 +1357,77 @@ function initEventListeners() {
             rejectDoubt();
         } else if (e.key === 'ArrowRight' || e.key === 'Enter' || e.key === ' ') {
             acceptDoubt();
+        }
+    });
+}
+
+function initCustomDropdown() {
+    const trigger = elements.harvesterSelectTrigger;
+    const input = elements.historyFilterHarvester;
+    const optionsList = elements.harvesterSelectOptions;
+    const container = elements.harvesterSelectContainer;
+
+    // Toggle dropdown on click (if not input click)
+    trigger.addEventListener('click', (e) => {
+        if (e.target !== input) {
+            optionsList.classList.toggle('hidden');
+            if (!optionsList.classList.contains('hidden')) input.focus();
+        }
+    });
+
+    // Open on input focus
+    input.addEventListener('focus', () => {
+        optionsList.classList.remove('hidden');
+    });
+
+    // Filter options on input
+    input.addEventListener('input', () => {
+        input.dataset.selectedId = ''; // Reset ID on manual input
+        const filter = input.value.toLowerCase();
+        const options = optionsList.querySelectorAll('li');
+
+        // Also trigger loadHistoryList with debounce? 
+        // For now let's just update the list view
+
+        let hasResults = false;
+
+        options.forEach(option => {
+            const text = option.textContent.toLowerCase();
+            if (text.includes(filter)) {
+                option.style.display = 'block';
+                hasResults = true;
+            } else {
+                option.style.display = 'none';
+            }
+        });
+
+        // Show/hide no results message? (Simplified: just show matching)
+    });
+
+    // Select option
+    optionsList.addEventListener('click', (e) => {
+        if (e.target.tagName === 'LI') {
+            const value = e.target.dataset.value;
+            const text = e.target.textContent;
+
+            // Set value
+            input.value = text;
+            input.dataset.selectedId = value; // Store ID
+
+            // Highlight selected
+            optionsList.querySelectorAll('li').forEach(li => li.classList.remove('selected'));
+            e.target.classList.add('selected');
+
+            // Close and trigger load
+            optionsList.classList.add('hidden');
+            loadHistoryList();
+        }
+    });
+
+    // Close when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!container.contains(e.target)) {
+            optionsList.classList.add('hidden');
         }
     });
 }
@@ -1363,11 +1461,21 @@ async function loadMetadataOptions() {
         // Load harvesters
         const harvesters = await HarvesterService.getAll();
         elements.selectHarvester.innerHTML = '<option value="">Sin asignar</option>';
+
+        // Reset custom dropdown options
+        elements.harvesterSelectOptions.innerHTML = '<li data-value="" class="selected">Todos los cosechadores</li>';
+
         harvesters.forEach(h => {
             const option = document.createElement('option');
             option.value = h.id;
             option.textContent = h.name;
             elements.selectHarvester.appendChild(option);
+
+            // Add to custom dropdown
+            const li = document.createElement('li');
+            li.dataset.value = h.id;
+            li.textContent = h.name;
+            elements.harvesterSelectOptions.appendChild(li);
         });
 
         // Load sectors
@@ -1400,6 +1508,132 @@ async function loadMetadataOptions() {
 // Toggle metadata panel
 function toggleMetadataPanel() {
     elements.metadataPanel.classList.toggle('collapsed');
+}
+
+// Open history modal
+async function openHistoryModal() {
+    elements.historyModal.classList.remove('hidden');
+    await loadHistoryList();
+}
+
+// Close history modal
+function closeHistoryModal() {
+    elements.historyModal.classList.add('hidden');
+}
+
+// Load and display history list
+async function loadHistoryList() {
+    try {
+        elements.historyList.innerHTML = '<div class="history-loading">Cargando...</div>';
+
+        // Get filter values
+        const harvesterSelectedId = elements.historyFilterHarvester.dataset.selectedId;
+        const harvesterText = elements.historyFilterHarvester.value.trim().toLowerCase();
+        const date = elements.historyFilterDate.value || null;
+
+        // Fetch recent analysis
+        let analyses = await AnalysisService.getRecent(50);
+
+        // Apply filters
+        // Priority to ID match if selected from dropdown
+        if (harvesterSelectedId) {
+            analyses = analyses.filter(a => a.harvester_id === harvesterSelectedId);
+        } else if (harvesterText) {
+            // Fallback to text search if typed manually
+            analyses = analyses.filter(a =>
+                a.harvester?.name.toLowerCase().includes(harvesterText)
+            );
+        }
+        if (date) {
+            analyses = analyses.filter(a => a.created_at.startsWith(date));
+        }
+
+        // Display results
+        if (analyses.length === 0) {
+            elements.historyList.innerHTML = '<div class="history-loading">No hay análisis registrados</div>';
+            return;
+        }
+
+        elements.historyList.innerHTML = '';
+        analyses.forEach(analysis => {
+            const item = createHistoryItem(analysis);
+            elements.historyList.appendChild(item);
+        });
+
+    } catch (error) {
+        console.error('Error loading history:', error);
+        elements.historyList.innerHTML = '<div class="history-loading">Error al cargar el historial</div>';
+    }
+}
+
+// Create history item HTML
+function createHistoryItem(analysis) {
+    const item = document.createElement('div');
+    item.className = 'history-item';
+    item.dataset.id = analysis.id;
+
+    const date = new Date(analysis.created_at);
+    const dateStr = date.toLocaleString('es-AR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+
+    item.innerHTML = `
+        <div class="history-item-header">
+            <span class="history-item-date">${dateStr}</span>
+            <div class="history-item-actions">
+                <button class="btn-history-action edit" data-id="${analysis.id}">Editar</button>
+                <button class="btn-history-action delete" data-id="${analysis.id}">Eliminar</button>
+            </div>
+        </div>
+        <div class="history-item-info">
+            <div class="history-info-row">
+                <span class="history-info-label">Estacas</span>
+                <span class="history-info-value">${analysis.total_confirmed}</span>
+            </div>
+            <div class="history-info-row">
+                <span class="history-info-label">Cosechador</span>
+                <span class="history-info-value">${analysis.harvester?.name || 'Sin asignar'}</span>
+            </div>
+            <div class="history-info-row">
+                <span class="history-info-label">Sector</span>
+                <span class="history-info-value">${analysis.sector?.name || 'Sin asignar'}</span>
+            </div>
+            <div class="history-info-row">
+                <span class="history-info-label">Lote</span>
+                <span class="history-info-value">${analysis.batch?.code || 'Sin asignar'}</span>
+            </div>
+        </div>
+    `;
+
+    // Add event listeners
+    item.querySelector('.edit').addEventListener('click', () => editAnalysis(analysis.id));
+    item.querySelector('.delete').addEventListener('click', () => deleteAnalysis(analysis.id));
+
+    return item;
+}
+
+// Edit analysis (open edit modal - simplified for now)
+async function editAnalysis(id) {
+    showToast('Función de edición en desarrollo');
+    // TODO: Implement edit modal
+}
+
+// Delete analysis
+async function deleteAnalysis(id) {
+    if (!confirm('¿Estás seguro de eliminar este análisis?')) return;
+
+    try {
+        await AnalysisService.delete(id);
+        showToast('✅ Análisis eliminado');
+        await loadHistoryList();
+    } catch (error) {
+        console.error('Error deleting analysis:', error);
+        showToast('❌ Error al eliminar', 'error');
+    }
 }
 
 // Save current analysis to Supabase
