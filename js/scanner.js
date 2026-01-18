@@ -4,6 +4,15 @@
  */
 
 // ===============================================
+// Supabase Integration
+// ===============================================
+import { supabase, testConnection } from './supabase-client.js';
+import { AnalysisService } from './services/analysis-service.js';
+import { HarvesterService } from './services/harvester-service.js';
+import { SectorService } from './services/sector-service.js';
+import { BatchService } from './services/batch-service.js';
+
+// ===============================================
 // Configuration
 // ===============================================
 const CONFIG = {
@@ -1291,12 +1300,20 @@ function createParticles() {
 // ===============================================
 // Initialize
 // ===============================================
-function init() {
+async function init() {
     createParticles(); // Add animated background
     showScreen('upload');
     elements.footer.style.display = 'none';
     initEventListeners();
     setStatus('LISTO', 'active');
+
+    // Test Supabase connection
+    const isConnected = await testConnection();
+    if (isConnected) {
+        console.log('🗄️ Backend conectado (Supabase)');
+    } else {
+        console.warn('⚠️ Backend no disponible, trabajando en modo offline');
+    }
 
     console.log('🌲 EstacaScan initialized');
     console.log('📦 Model will be loaded on first image upload');

@@ -169,7 +169,7 @@ CREATE INDEX idx_analysis_harvester ON analysis(harvester_id);
 CREATE INDEX idx_analysis_sector ON analysis(sector_id);
 CREATE INDEX idx_analysis_batch ON analysis(batch_id);
 CREATE INDEX idx_analysis_created ON analysis(created_at DESC);
-CREATE INDEX idx_analysis_date ON analysis(DATE(created_at));
+-- Para filtrar por día usaremos la columna created_at directamente
 
 -- ===============================================
 -- Table: daily_payments
