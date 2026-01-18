@@ -40,6 +40,47 @@
         </div>
     </header>
 
+    <!-- Metadata Panel (collapsible) -->
+    <div class="metadata-panel collapsed" id="metadata-panel">
+        <button class="metadata-toggle" id="metadata-toggle">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M6 9l6 6 6-6" />
+            </svg>
+            <span>Información</span>
+        </button>
+
+        <div class="metadata-content" id="metadata-content">
+            <div class="metadata-row">
+                <div class="metadata-field">
+                    <label for="select-harvester">Cosechador</label>
+                    <select id="select-harvester">
+                        <option value="">Sin asignar</option>
+                    </select>
+                </div>
+
+                <div class="metadata-field">
+                    <label for="select-sector">Sector</label>
+                    <select id="select-sector">
+                        <option value="">Sin asignar</option>
+                    </select>
+                </div>
+
+                <div class="metadata-field">
+                    <label for="select-batch">Lote</label>
+                    <select id="select-batch">
+                        <option value="">Sin asignar</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="metadata-field metadata-field-full">
+                <label for="input-notes">Notas (opcional)</label>
+                <textarea id="input-notes" placeholder="Ej: Primera cosecha del día, clima nublado..."
+                    rows="2"></textarea>
+            </div>
+        </div>
+    </div>
+
     <!-- Main Content -->
     <main class="main">
         <!-- Upload Screen -->
@@ -187,6 +228,14 @@
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M5 12h14M12 5l7 7-7 7" />
             </svg>
+        </button>
+        <button class="btn-save-analysis hidden" id="btn-save-analysis">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" />
+                <polyline points="17 21 17 13 7 13 7 21" />
+                <polyline points="7 3 7 8 15 8" />
+            </svg>
+            GUARDAR
         </button>
         <button class="btn-new-analysis hidden" id="btn-new-analysis">
             NUEVO ANÁLISIS

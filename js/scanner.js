@@ -450,6 +450,16 @@ const elements = {
     doubtCount: document.getElementById('doubt-count'),
     btnNewAnalysis: document.getElementById('btn-new-analysis'),
 
+    // Metadata Panel (Supabase)
+    metadataPanel: document.getElementById('metadata-panel'),
+    metadataToggle: document.getElementById('metadata-toggle'),
+    metadataContent: document.getElementById('metadata-content'),
+    selectHarvester: document.getElementById('select-harvester'),
+    selectSector: document.getElementById('select-sector'),
+    selectBatch: document.getElementById('select-batch'),
+    inputNotes: document.getElementById('input-notes'),
+    btnSaveAnalysis: document.getElementById('btn-save-analysis'),
+
     // Status
     status: document.getElementById('status'),
 
@@ -613,6 +623,7 @@ function showResults() {
         elements.btnStartReview.classList.add('hidden');
     }
 
+    elements.btnSaveAnalysis.classList.remove('hidden'); // Show save button
     elements.btnNewAnalysis.classList.remove('hidden');
 }
 
@@ -1066,6 +1077,10 @@ function newAnalysis() {
     setStatus('LISTO', 'active');
     elements.btnStartReview.classList.add('hidden');
     elements.btnNewAnalysis.classList.add('hidden');
+    elements.btnSaveAnalysis.classList.add('hidden');
+
+    // Reset metadata form
+    elements.inputNotes.value = '';
 
     // Reset add mode button
     if (elements.btnAddMode) {
@@ -1266,6 +1281,12 @@ function initEventListeners() {
     // New analysis
     elements.btnNewAnalysis.addEventListener('click', newAnalysis);
 
+    // Metadata panel toggle
+    elements.metadataToggle.addEventListener('click', toggleMetadataPanel);
+
+    // Save analysis
+    elements.btnSaveAnalysis.addEventListener('click', saveAnalysis);
+
     // Keyboard shortcuts
     document.addEventListener('keydown', (e) => {
         if (elements.screenReview.classList.contains('hidden')) return;
@@ -1298,6 +1319,117 @@ function createParticles() {
 }
 
 // ===============================================
+// Supabase Functions
+// ===============================================
+
+// Load harvesters, sectors, and batches into selectors
+async function loadMetadataOptions() {
+    try {
+        // Load harvesters
+        const harvesters = await HarvesterService.getAll();
+        elements.selectHarvester.innerHTML = '<option value="">Sin asignar</option>';
+        harvesters.forEach(h => {
+            const option = document.createElement('option');
+            option.value = h.id;
+            option.textContent = h.name;
+            elements.selectHarvester.appendChild(option);
+        });
+
+        // Load sectors
+        const sectors = await SectorService.getAll();
+        elements.selectSector.innerHTML = '<option value="">Sin asignar</option>';
+        sectors.forEach(s => {
+            const option = document.createElement('option');
+            option.value = s.id;
+            option.textContent = `${s.name} (${s.code || 'S/C'})`;
+            elements.selectSector.appendChild(option);
+        });
+
+        // Load batches
+        const batches = await BatchService.getAll();
+        elements.selectBatch.innerHTML = '<option value="">Sin asignar</option>';
+        batches.forEach(b => {
+            const option = document.createElement('option');
+            option.value = b.id;
+            option.textContent = `${b.code} - ${b.variety}`;
+            elements.selectBatch.appendChild(option);
+        });
+
+        console.log('✅ Metadata options loaded');
+    } catch (error) {
+        console.error('❌ Error loading metadata:', error);
+        showToast('Error al cargar datos', 'error');
+    }
+}
+
+// Toggle metadata panel
+function toggleMetadataPanel() {
+    elements.metadataPanel.classList.toggle('collapsed');
+}
+
+// Save current analysis to Supabase
+async function saveAnalysis() {
+    if (!state.image || state.totalConfirmed === 0) {
+        showToast('No hay análisis para guardar');
+        return;
+    }
+
+    try {
+        elements.btnSaveAnalysis.classList.add('saving');
+        elements.btnSaveAnalysis.textContent = 'GUARDANDO...';
+
+        // Get global config price
+        const { data: config } = await supabase.from('config').select('price_per_stake').single();
+        const pricePerStake = config?.price_per_stake || 0;
+
+        const analysisData = {
+            harvesterId: elements.selectHarvester.value || null,
+            sectorId: elements.selectSector.value || null,
+            batchId: elements.selectBatch.value || null,
+            notes: elements.inputNotes.value || null,
+            totalConfirmed: state.totalConfirmed,
+            iaBase: state.iaBase,
+            manuallyAccepted: state.manuallyAccepted || 0,
+            manuallyAdded: state.manuallyAdded || 0,
+            rejected: state.rejectedDetections.length,
+            doubtsReviewed: state.initialDoubtsCount || 0,
+            imageWidth: state.image.width,
+            imageHeight: state.image.height,
+            processingTime: state.processingTime || 0
+        };
+
+        // Save analysis
+        const savedAnalysis = await AnalysisService.save(analysisData);
+
+        // Update harvester stats if assigned
+        if (analysisData.harvesterId) {
+            await HarvesterService.updateStats(analysisData.harvesterId, pricePerStake);
+        }
+
+        // Update batch total if assigned
+        if (analysisData.batchId) {
+            await BatchService.updateTotal(analysisData.batchId);
+        }
+
+        elements.btnSaveAnalysis.classList.remove('saving');
+        elements.btnSaveAnalysis.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg> GUARDADO';
+        showToast('✅ Análisis guardado');
+
+        // Auto start new analysis after 1 second
+        setTimeout(() => {
+            newAnalysis();
+        }, 1000);
+
+
+    } catch (error) {
+        console.error('❌ Error saving analysis:', error);
+        elements.btnSaveAnalysis.classList.remove('saving');
+        elements.btnSaveAnalysis.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> GUARDAR';
+        showToast('❌ Error al guardar: ' + error.message, 'error');
+    }
+}
+
+// ===============================================
 // Initialize
 // ===============================================
 async function init() {
@@ -1311,6 +1443,8 @@ async function init() {
     const isConnected = await testConnection();
     if (isConnected) {
         console.log('🗄️ Backend conectado (Supabase)');
+        // Load metadata options
+        await loadMetadataOptions();
     } else {
         console.warn('⚠️ Backend no disponible, trabajando en modo offline');
     }
