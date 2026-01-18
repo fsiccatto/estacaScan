@@ -1415,10 +1415,18 @@ async function saveAnalysis() {
         elements.btnSaveAnalysis.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg> GUARDADO';
         showToast('✅ Análisis guardado');
 
-        // Auto start new analysis after 1 second
+        // Smooth transition to new analysis
         setTimeout(() => {
-            newAnalysis();
-        }, 1000);
+            // Fade out current screen
+            elements.screenResult.style.transition = 'opacity 0.5s ease';
+            elements.screenResult.style.opacity = '0';
+
+            setTimeout(() => {
+                elements.screenResult.style.opacity = '1';
+                elements.screenResult.style.transition = '';
+                newAnalysis();
+            }, 500);
+        }, 800);
 
 
     } catch (error) {

@@ -854,9 +854,14 @@ body {
     z-index: 10;
 }
 
+.metadata-panel.collapsed {
+    padding-bottom: 0;
+}
+
 .metadata-panel.collapsed .metadata-content {
     max-height: 0;
     opacity: 0;
+    padding: 0 24px;
 }
 
 .metadata-toggle {
@@ -867,7 +872,7 @@ body {
     padding: 8px 24px;
     background: transparent;
     border: none;
-    color: var(--color-text-secondary);
+    color: var(--color-primary);
     font-size: 13px;
     font-weight: 500;
     cursor: pointer;
@@ -875,8 +880,8 @@ body {
 }
 
 .metadata-toggle:hover {
-    color: var(--color-text);
-    background: rgba(255, 255, 255, 0.05);
+    color: #34d399;
+    background: rgba(16, 185, 129, 0.05);
 }
 
 .metadata-toggle svg {
