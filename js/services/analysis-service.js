@@ -29,6 +29,7 @@ export class AnalysisService {
                     image_width: analysisData.imageWidth,
                     image_height: analysisData.imageHeight,
                     processing_time_ms: analysisData.processingTime,
+                    image_hash: analysisData.imageHash, // Nuevo: Guardar hash para evitar duplicados en DB
                     notes: analysisData.notes || null
                 }])
                 .select()

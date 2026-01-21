@@ -449,6 +449,30 @@ const elements = {
     // Status
     status: document.getElementById('status'),
 
+    // History Modal
+    historyModal: document.getElementById('history-modal'),
+    btnHistory: document.getElementById('btn-history'),
+    btnCloseHistory: document.getElementById('btn-close-history'),
+    historyList: document.getElementById('history-list'),
+
+    // History Filters
+    historyFilterHarvester: document.getElementById('history-filter-harvester'),
+    harvesterSelectContainer: document.getElementById('harvester-select-container'),
+    harvesterSelectTrigger: document.getElementById('harvester-select-trigger'),
+    harvesterSelectOptions: document.getElementById('harvester-select-options'),
+    historyFilterDate: document.getElementById('history-filter-date'),
+
+    // Metadata Panel
+    metadataPanel: document.getElementById('metadata-panel'),
+    metadataToggle: document.getElementById('metadata-toggle'),
+    selectHarvester: document.getElementById('select-harvester'),
+    selectSector: document.getElementById('select-sector'),
+    selectBatch: document.getElementById('select-batch'),
+    inputNotes: document.getElementById('input-notes'),
+
+    // Buttons
+    btnSaveAnalysis: document.getElementById('btn-save-analysis'),
+
     // Confirmation Modal
     confirmationModal: document.getElementById('confirmation-modal'),
     btnCancelDelete: document.getElementById('btn-cancel-delete'),
@@ -1275,8 +1299,367 @@ function initEventListeners() {
             acceptDoubt();
         }
     });
+
+    // Supabase & Metadata
+    if (elements.btnSaveAnalysis) elements.btnSaveAnalysis.addEventListener('click', saveAnalysis);
+    if (elements.metadataToggle) elements.metadataToggle.addEventListener('click', toggleMetadataPanel);
+    if (elements.btnHistory) elements.btnHistory.addEventListener('click', openHistoryModal);
+    if (elements.btnCloseHistory) elements.btnCloseHistory.addEventListener('click', closeHistoryModal);
 }
 
+// ===============================================
+// Custom Dropdown Logic
+// ===============================================
+function initCustomDropdown() {
+    const trigger = elements.harvesterSelectTrigger;
+    const input = elements.historyFilterHarvester;
+    const optionsList = elements.harvesterSelectOptions;
+    const container = elements.harvesterSelectContainer;
+
+    if (!trigger || !input) return;
+
+    // Toggle dropdown on click (if not input click)
+    trigger.addEventListener('click', (e) => {
+        if (e.target !== input) {
+            optionsList.classList.toggle('hidden');
+            if (!optionsList.classList.contains('hidden')) input.focus();
+        }
+    });
+
+    // Open on input focus
+    input.addEventListener('focus', () => {
+        optionsList.classList.remove('hidden');
+    });
+
+    // Filter options on input
+    input.addEventListener('input', () => {
+        input.dataset.selectedId = ''; // Reset ID on manual input
+        const filter = input.value.toLowerCase();
+        const options = optionsList.querySelectorAll('li');
+
+        options.forEach(option => {
+            const text = option.textContent.toLowerCase();
+            if (text.includes(filter)) {
+                option.style.display = 'block';
+            } else {
+                option.style.display = 'none';
+            }
+        });
+    });
+
+    // Select option
+    optionsList.addEventListener('click', (e) => {
+        if (e.target.tagName === 'LI') {
+            const value = e.target.dataset.value;
+            const text = e.target.textContent;
+
+            // Set value
+            input.value = text;
+            input.dataset.selectedId = value; // Store ID
+
+            // Highlight selected
+            optionsList.querySelectorAll('li').forEach(li => li.classList.remove('selected'));
+            e.target.classList.add('selected');
+
+            // Close and trigger load
+            optionsList.classList.add('hidden');
+            loadHistoryList();
+        }
+    });
+
+    // Close when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!container.contains(e.target)) {
+            optionsList.classList.add('hidden');
+        }
+    });
+}
+
+// (createParticles removed: using shared ParticleSystem module)
+
+// ===============================================
+// Supabase Functions
+// ===============================================
+
+// Load harvesters, sectors, and batches into selectors
+async function loadMetadataOptions() {
+    try {
+        // Load harvesters
+        const harvesters = await HarvesterService.getAll();
+        elements.selectHarvester.innerHTML = '<option value="">Sin asignar</option>';
+
+        // Reset custom dropdown options
+        if (elements.harvesterSelectOptions) {
+            elements.harvesterSelectOptions.innerHTML = '<li data-value="" class="selected">Todos los cosechadores</li>';
+
+            harvesters.forEach(h => {
+                const option = document.createElement('option');
+                option.value = h.id;
+                option.textContent = h.name;
+                elements.selectHarvester.appendChild(option);
+
+                // Add to custom dropdown
+                const li = document.createElement('li');
+                li.dataset.value = h.id;
+                li.textContent = h.name;
+                elements.harvesterSelectOptions.appendChild(li);
+            });
+        }
+
+        // Load sectors
+        const sectors = await SectorService.getAll();
+        elements.selectSector.innerHTML = '<option value="">Sin asignar</option>';
+        sectors.forEach(s => {
+            const option = document.createElement('option');
+            option.value = s.id;
+            option.textContent = `${s.name} (${s.code || 'S/C'})`;
+            elements.selectSector.appendChild(option);
+        });
+
+        // Load batches
+        const batches = await BatchService.getAll();
+        elements.selectBatch.innerHTML = '<option value="">Sin asignar</option>';
+        batches.forEach(b => {
+            const option = document.createElement('option');
+            option.value = b.id;
+            option.textContent = `${b.code} - ${b.variety}`;
+            elements.selectBatch.appendChild(option);
+        });
+
+        console.log('✅ Metadata options loaded');
+    } catch (error) {
+        console.error('❌ Error loading metadata:', error);
+        showToast('Error al cargar datos', 'error');
+    }
+}
+
+// Toggle metadata panel
+function toggleMetadataPanel() {
+    elements.metadataPanel.classList.toggle('collapsed');
+}
+
+// Open history modal
+async function openHistoryModal() {
+    elements.historyModal.classList.remove('hidden');
+    await loadHistoryList();
+}
+
+// Close history modal
+function closeHistoryModal() {
+    elements.historyModal.classList.add('hidden');
+}
+
+// Load and display history list
+async function loadHistoryList() {
+    try {
+        elements.historyList.innerHTML = '<div class="history-loading">Cargando...</div>';
+
+        // Get filter values
+        const harvesterSelectedId = elements.historyFilterHarvester ? elements.historyFilterHarvester.dataset.selectedId : null;
+        const harvesterText = elements.historyFilterHarvester ? elements.historyFilterHarvester.value.trim().toLowerCase() : '';
+        const date = elements.historyFilterDate ? elements.historyFilterDate.value || null : null;
+
+        // Fetch recent analysis
+        let analyses = await AnalysisService.getRecent(50);
+
+        // Apply filters
+        // Priority to ID match if selected from dropdown
+        if (harvesterSelectedId) {
+            analyses = analyses.filter(a => a.harvester_id === harvesterSelectedId);
+        } else if (harvesterText) {
+            // Fallback to text search if typed manually
+            analyses = analyses.filter(a =>
+                a.harvester_name.toLowerCase().includes(harvesterText)
+            );
+        }
+        if (date) {
+            analyses = analyses.filter(a => a.created_at.startsWith(date));
+        }
+
+        // Display results
+        if (analyses.length === 0) {
+            elements.historyList.innerHTML = '<div class="history-loading">No hay análisis registrados</div>';
+            return;
+        }
+
+        elements.historyList.innerHTML = '';
+        analyses.forEach(analysis => {
+            const item = createHistoryItem(analysis);
+            elements.historyList.appendChild(item);
+        });
+
+    } catch (error) {
+        console.error('Error loading history:', error);
+        elements.historyList.innerHTML = '<div class="history-loading">Error al cargar el historial</div>';
+    }
+}
+
+// Create history item HTML
+function createHistoryItem(analysis) {
+    const item = document.createElement('div');
+    item.className = 'history-item';
+    item.dataset.id = analysis.id;
+
+    const date = new Date(analysis.created_at);
+    const dateStr = date.toLocaleString('es-AR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+
+    item.innerHTML = `
+        <div class="history-item-header">
+            <span class="history-item-date">${dateStr}</span>
+            <div class="history-item-actions">
+                <button class="btn-history-action edit" data-id="${analysis.id}">Editar</button>
+                <button class="btn-history-action delete" data-id="${analysis.id}">Eliminar</button>
+            </div>
+        </div>
+        <div class="history-item-info">
+            <div class="history-info-row">
+                <span class="history-info-label">Estacas</span>
+                <span class="history-info-value">${analysis.total_confirmed}</span>
+            </div>
+            <div class="history-info-row">
+                <span class="history-info-label">Cosechador</span>
+                <span class="history-info-value">${analysis.harvester_name || 'Sin asignar'}</span>
+            </div>
+            <div class="history-info-row">
+                <span class="history-info-label">Sector</span>
+                <span class="history-info-value">${analysis.sector_name || 'Sin asignar'}</span>
+            </div>
+            <div class="history-info-row">
+                <span class="history-info-label">Lote</span>
+                <span class="history-info-value">${analysis.batch_code || 'Sin asignar'}</span>
+            </div>
+        </div>
+    `;
+
+    // Add event listeners
+    item.querySelector('.edit').addEventListener('click', () => editAnalysis(analysis.id));
+    item.querySelector('.delete').addEventListener('click', () => deleteAnalysis(analysis.id));
+
+    return item;
+}
+
+// Edit analysis (open edit modal - simplified for now)
+async function editAnalysis(id) {
+    showToast('Función de edición en desarrollo');
+    // TODO: Implement edit modal
+}
+
+// Delete analysis with Custom Modal
+function deleteAnalysis(id) {
+    // Show custom modal
+    elements.confirmationModal.classList.remove('hidden');
+
+    // Use one-time event handlers to avoid stacking listeners
+    elements.btnConfirmDelete.onclick = async () => {
+        elements.confirmationModal.classList.add('hidden');
+        elements.btnConfirmDelete.onclick = null; // Clean up
+
+        try {
+            await AnalysisService.delete(id);
+            showToast('✅ Análisis eliminado');
+            await loadHistoryList();
+        } catch (error) {
+            console.error('Error deleting analysis:', error);
+            showToast('❌ Error al eliminar', 'error');
+        }
+    };
+
+    elements.btnCancelDelete.onclick = () => {
+        elements.confirmationModal.classList.add('hidden');
+        elements.btnCancelDelete.onclick = null; // Clean up
+    };
+}
+
+// Save current analysis to Supabase
+async function saveAnalysis() {
+    if (!state.image || state.totalConfirmed === 0) {
+        showToast('No hay análisis para guardar');
+        return;
+    }
+
+    // Validate required field: harvester
+    if (!elements.selectHarvester.value) {
+        showToast('⚠️ Debe seleccionar un cosechador', 'error');
+        elements.selectHarvester.style.borderColor = '#ef4444';
+        elements.selectHarvester.focus();
+
+        // Remove error highlight after 3 seconds
+        setTimeout(() => {
+            elements.selectHarvester.style.borderColor = '';
+        }, 3000);
+        return;
+    }
+
+
+    try {
+        elements.btnSaveAnalysis.classList.add('saving');
+        elements.btnSaveAnalysis.textContent = 'GUARDANDO...';
+
+        // Get global config price
+        const { data: config } = await supabase.from('config').select('price_per_stake').single();
+        const pricePerStake = config?.price_per_stake || 0;
+
+        const analysisData = {
+            harvesterId: elements.selectHarvester.value || null,
+            sectorId: elements.selectSector.value || null,
+            batchId: elements.selectBatch.value || null,
+            notes: elements.inputNotes.value || null,
+            totalConfirmed: state.totalConfirmed,
+            iaBase: state.iaBase,
+            manuallyAccepted: state.manuallyAccepted || 0,
+            manuallyAdded: state.manuallyAdded || 0,
+            rejected: state.rejectedDetections.length,
+            doubtsReviewed: state.initialDoubtsCount || 0,
+            imageWidth: state.image.width,
+            imageHeight: state.image.height,
+            imageHash: state.lastImageHash, // Enviar hash
+            processingTime: state.processingTime || 0
+        };
+
+        // Save analysis
+        const savedAnalysis = await AnalysisService.save(analysisData);
+
+        // Update harvester stats if assigned
+        if (analysisData.harvesterId) {
+            await HarvesterService.updateStats(analysisData.harvesterId, pricePerStake);
+        }
+
+        // Update batch total if assigned
+        if (analysisData.batchId) {
+            await BatchService.updateTotal(analysisData.batchId);
+        }
+
+        elements.btnSaveAnalysis.classList.remove('saving');
+        elements.btnSaveAnalysis.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg> GUARDADO';
+        showToast('✅ Análisis guardado');
+
+        // Smooth transition to new analysis
+        setTimeout(() => {
+            // Fade out current screen
+            elements.screenResult.style.transition = 'opacity 0.5s ease';
+            elements.screenResult.style.opacity = '0';
+
+            setTimeout(() => {
+                elements.screenResult.style.opacity = '1';
+                elements.screenResult.style.transition = '';
+                newAnalysis();
+            }, 500);
+        }, 800);
+
+
+    } catch (error) {
+        console.error('❌ Error saving analysis:', error);
+        elements.btnSaveAnalysis.classList.remove('saving');
+        elements.btnSaveAnalysis.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> GUARDAR';
+        showToast('❌ Error al guardar: ' + error.message, 'error');
+    }
+}
 // ===============================================
 // Initialize
 // ===============================================
@@ -1289,6 +1672,16 @@ function init() {
     showScreen('upload');
     elements.footer.style.display = 'none';
     initEventListeners();
+    initCustomDropdown(); // Init custom select
+
+    // Check Supabase connection
+    import('./supabase-client.js').then(({ testConnection }) => {
+        testConnection();
+    });
+
+    // Load initial data
+    loadMetadataOptions();
+
     setStatus('LISTO', 'active');
 
     console.log('🌲 EstacaScan initialized');
