@@ -8,22 +8,8 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 const SUPABASE_URL = 'https://vnjxwvyifhjicmgngtun.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZuanh3dnlpZmhqaWNtZ25ndHVuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc3NDE5NDcsImV4cCI6MjA4MzMxNzk0N30.zzWKBCCJh4hkxpkLTX1ZZDlXLxM6CnbEzRZiYyr6Fw8';
 
-let supabase;
-
-// Universal Client Initialization
-if (typeof window !== 'undefined') {
-    // Browser
-    if (window.supabase) {
-        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    } else {
-        // Fallback if window.supabase not loaded, try import
-        supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    }
-} else {
-    // Node.js (for testing)
-    const { createClient } = await import('@supabase/supabase-js');
-    supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-}
+// Initialize client
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // Test connection
 async function testConnection() {
