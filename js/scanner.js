@@ -449,6 +449,11 @@ const elements = {
     // Status
     status: document.getElementById('status'),
 
+    // Confirmation Modal
+    confirmationModal: document.getElementById('confirmation-modal'),
+    btnCancelDelete: document.getElementById('btn-cancel-delete'),
+    btnConfirmDelete: document.getElementById('btn-confirm-delete'),
+
     // Toast
     toastContainer: document.getElementById('toast-container')
 };
