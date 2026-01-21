@@ -58,6 +58,25 @@ body {
     -moz-osx-font-smoothing: grayscale;
 }
 
+/* Background Particles */
+.bg-particles {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+    z-index: 0;
+}
+
+.particle {
+    position: absolute;
+    /* width/height defined in JS */
+    background: var(--color-primary);
+    border-radius: 50%;
+    opacity: 0.3;
+    pointer-events: none;
+    will-change: transform;
+}
+
 /* Layout */
 body {
     display: flex;

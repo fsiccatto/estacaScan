@@ -3,14 +3,7 @@
  * Aplicación web para detectar y contar estacas usando YOLO v8 con ONNX Runtime Web
  */
 
-// ===============================================
-// Supabase Integration
-// ===============================================
-import { supabase, testConnection } from './supabase-client.js';
-import { AnalysisService } from './services/analysis-service.js';
-import { HarvesterService } from './services/harvester-service.js';
-import { SectorService } from './services/sector-service.js';
-import { BatchService } from './services/batch-service.js';
+import { ParticleSystem } from './particles.js';
 
 // ===============================================
 // Configuration
@@ -400,9 +393,6 @@ class AppState {
     get manuallyAdded() {
         return this.confirmedDetections.filter(d => d.isManual).length;
     }
-
-    // Store hash of last processed image to prevent duplicates
-    lastImageHash = null;
 }
 
 const state = new AppState();
@@ -412,6 +402,9 @@ const modelManager = new ONNXModelManager();
 // DOM Elements
 // ===============================================
 const elements = {
+    // Particles
+    bgParticles: document.getElementById('bg-particles'),
+
     // Screens
     screenUpload: document.getElementById('screen-upload'),
     screenLoading: document.getElementById('screen-loading'),
@@ -452,30 +445,6 @@ const elements = {
     btnStartReview: document.getElementById('btn-start-review'),
     doubtCount: document.getElementById('doubt-count'),
     btnNewAnalysis: document.getElementById('btn-new-analysis'),
-
-    // Metadata Panel (Supabase)
-    metadataPanel: document.getElementById('metadata-panel'),
-    metadataToggle: document.getElementById('metadata-toggle'),
-    metadataContent: document.getElementById('metadata-content'),
-    selectHarvester: document.getElementById('select-harvester'),
-    selectSector: document.getElementById('select-sector'),
-    selectBatch: document.getElementById('select-batch'),
-    inputNotes: document.getElementById('input-notes'),
-    btnSaveAnalysis: document.getElementById('btn-save-analysis'),
-
-    // History Modal
-    btnHistory: document.getElementById('btn-history'),
-    historyModal: document.getElementById('history-modal'),
-    btnCloseHistory: document.getElementById('btn-close-history'),
-    historyList: document.getElementById('history-list'),
-
-    // Custom Dropdown Elements
-    historyFilterHarvester: document.getElementById('history-filter-harvester'), // The input
-    harvesterSelectContainer: document.getElementById('harvester-select-container'),
-    harvesterSelectTrigger: document.getElementById('harvester-select-trigger'),
-    harvesterSelectOptions: document.getElementById('harvester-select-options'),
-
-    historyFilterDate: document.getElementById('history-filter-date'),
 
     // Status
     status: document.getElementById('status'),
@@ -545,38 +514,10 @@ function handleFileSelect(file) {
     reader.readAsDataURL(file);
 }
 
-// Generate simple hash for image duplicate detection
-function generateImageHash(dataUrl) {
-    // Use a combination of file size and content sample
-    const size = dataUrl.length;
-    const sample = dataUrl.substring(0, 1000) + dataUrl.substring(dataUrl.length - 1000);
-
-    // Simple hash function
-    let hash = 0;
-    for (let i = 0; i < sample.length; i++) {
-        const char = sample.charCodeAt(i);
-        hash = ((hash << 5) - hash) + char;
-        hash = hash & hash; // Convert to 32-bit integer
-    }
-
-    return `${size}_${hash}`;
-}
-
 // ===============================================
 // Image Processing
 // ===============================================
 async function processImage(imageDataUrl) {
-    // Check for duplicate image
-    const imageHash = generateImageHash(imageDataUrl);
-    if (state.lastImageHash === imageHash) {
-        showToast('⚠️ Esta imagen ya fue procesada', 'error');
-        showScreen('upload');
-        setStatus('LISTO', 'active');
-        return;
-    }
-
-    state.lastImageHash = imageHash; // Store for next check
-
     showScreen('loading');
     setStatus('ANALIZANDO', 'loading');
 
@@ -668,7 +609,6 @@ function showResults() {
         elements.btnStartReview.classList.add('hidden');
     }
 
-    elements.btnSaveAnalysis.classList.remove('hidden'); // Show save button
     elements.btnNewAnalysis.classList.remove('hidden');
 }
 
@@ -802,8 +742,8 @@ function drawDoubtCrop(doubt) {
     const ctx = elements.reviewCanvas.getContext('2d');
     const img = state.image;
 
-    // Calculate crop area with MORE padding for context
-    const padding = 150; // Increased from 50px for better context
+    // Calculate crop area with padding
+    const padding = 50;
     const width = doubt.x2 - doubt.x1;
     const height = doubt.y2 - doubt.y1;
 
@@ -812,8 +752,8 @@ function drawDoubtCrop(doubt) {
     const cropWidth = Math.min(img.width - cropX, width + padding * 2);
     const cropHeight = Math.min(img.height - cropY, height + padding * 2);
 
-    // Set canvas size (increased to 500x500 for better visibility)
-    const maxSize = 500;
+    // Set canvas size (max 400x400)
+    const maxSize = 400;
     const scale = Math.min(maxSize / cropWidth, maxSize / cropHeight);
     elements.reviewCanvas.width = cropWidth * scale;
     elements.reviewCanvas.height = cropHeight * scale;
@@ -1122,14 +1062,6 @@ function newAnalysis() {
     setStatus('LISTO', 'active');
     elements.btnStartReview.classList.add('hidden');
     elements.btnNewAnalysis.classList.add('hidden');
-    elements.btnSaveAnalysis.classList.add('hidden');
-
-    // Reset metadata form
-    elements.inputNotes.value = '';
-
-    // Reset image hash to allow new uploads
-    state.lastImageHash = null;
-
 
     // Reset add mode button
     if (elements.btnAddMode) {
@@ -1266,10 +1198,8 @@ function initEventListeners() {
                 wasTouchDragging = true;
             }
 
-            // Increase pan sentivity for smoother/faster mobile panning
-            const PAN_FACTOR = 2.0; // Higher = faster panning
-            const deltaX = ((e.touches[0].clientX - touchStartX) / state.zoom) * PAN_FACTOR;
-            const deltaY = ((e.touches[0].clientY - touchStartY) / state.zoom) * PAN_FACTOR;
+            const deltaX = (e.touches[0].clientX - touchStartX) / state.zoom;
+            const deltaY = (e.touches[0].clientY - touchStartY) / state.zoom;
 
             state.panX += deltaX;
             state.panY += deltaY;
@@ -1330,25 +1260,6 @@ function initEventListeners() {
     // New analysis
     elements.btnNewAnalysis.addEventListener('click', newAnalysis);
 
-    // Metadata panel toggle
-    elements.metadataToggle.addEventListener('click', toggleMetadataPanel);
-
-    // Save analysis
-    elements.btnSaveAnalysis.addEventListener('click', saveAnalysis);
-
-    // History modal
-    elements.btnHistory.addEventListener('click', openHistoryModal);
-    elements.btnCloseHistory.addEventListener('click', closeHistoryModal);
-    elements.historyModal.addEventListener('click', (e) => {
-        if (e.target === elements.historyModal) closeHistoryModal();
-    });
-
-    // Custom Dropdown Logic
-    initCustomDropdown();
-
-    // Date filter
-    elements.historyFilterDate.addEventListener('change', loadHistoryList);
-
     // Keyboard shortcuts
     document.addEventListener('keydown', (e) => {
         if (elements.screenReview.classList.contains('hidden')) return;
@@ -1361,384 +1272,19 @@ function initEventListeners() {
     });
 }
 
-function initCustomDropdown() {
-    const trigger = elements.harvesterSelectTrigger;
-    const input = elements.historyFilterHarvester;
-    const optionsList = elements.harvesterSelectOptions;
-    const container = elements.harvesterSelectContainer;
-
-    // Toggle dropdown on click (if not input click)
-    trigger.addEventListener('click', (e) => {
-        if (e.target !== input) {
-            optionsList.classList.toggle('hidden');
-            if (!optionsList.classList.contains('hidden')) input.focus();
-        }
-    });
-
-    // Open on input focus
-    input.addEventListener('focus', () => {
-        optionsList.classList.remove('hidden');
-    });
-
-    // Filter options on input
-    input.addEventListener('input', () => {
-        input.dataset.selectedId = ''; // Reset ID on manual input
-        const filter = input.value.toLowerCase();
-        const options = optionsList.querySelectorAll('li');
-
-        // Also trigger loadHistoryList with debounce? 
-        // For now let's just update the list view
-
-        let hasResults = false;
-
-        options.forEach(option => {
-            const text = option.textContent.toLowerCase();
-            if (text.includes(filter)) {
-                option.style.display = 'block';
-                hasResults = true;
-            } else {
-                option.style.display = 'none';
-            }
-        });
-
-        // Show/hide no results message? (Simplified: just show matching)
-    });
-
-    // Select option
-    optionsList.addEventListener('click', (e) => {
-        if (e.target.tagName === 'LI') {
-            const value = e.target.dataset.value;
-            const text = e.target.textContent;
-
-            // Set value
-            input.value = text;
-            input.dataset.selectedId = value; // Store ID
-
-            // Highlight selected
-            optionsList.querySelectorAll('li').forEach(li => li.classList.remove('selected'));
-            e.target.classList.add('selected');
-
-            // Close and trigger load
-            optionsList.classList.add('hidden');
-            loadHistoryList();
-        }
-    });
-
-    // Close when clicking outside
-    document.addEventListener('click', (e) => {
-        if (!container.contains(e.target)) {
-            optionsList.classList.add('hidden');
-        }
-    });
-}
-
-// ===============================================
-// Background Particles
-// ===============================================
-function createParticles() {
-    const bgParticles = document.getElementById('bg-particles');
-    if (!bgParticles) return;
-
-    const count = 20;
-    for (let i = 0; i < count; i++) {
-        const particle = document.createElement('div');
-        particle.className = 'particle';
-        particle.style.left = `${Math.random() * 100}%`;
-        particle.style.top = `${Math.random() * 100}%`;
-        particle.style.animationDelay = `${Math.random() * 15}s`;
-        particle.style.animationDuration = `${10 + Math.random() * 10}s`;
-        bgParticles.appendChild(particle);
-    }
-}
-
-// ===============================================
-// Supabase Functions
-// ===============================================
-
-// Load harvesters, sectors, and batches into selectors
-async function loadMetadataOptions() {
-    try {
-        // Load harvesters
-        const harvesters = await HarvesterService.getAll();
-        elements.selectHarvester.innerHTML = '<option value="">Sin asignar</option>';
-
-        // Reset custom dropdown options
-        elements.harvesterSelectOptions.innerHTML = '<li data-value="" class="selected">Todos los cosechadores</li>';
-
-        harvesters.forEach(h => {
-            const option = document.createElement('option');
-            option.value = h.id;
-            option.textContent = h.name;
-            elements.selectHarvester.appendChild(option);
-
-            // Add to custom dropdown
-            const li = document.createElement('li');
-            li.dataset.value = h.id;
-            li.textContent = h.name;
-            elements.harvesterSelectOptions.appendChild(li);
-        });
-
-        // Load sectors
-        const sectors = await SectorService.getAll();
-        elements.selectSector.innerHTML = '<option value="">Sin asignar</option>';
-        sectors.forEach(s => {
-            const option = document.createElement('option');
-            option.value = s.id;
-            option.textContent = `${s.name} (${s.code || 'S/C'})`;
-            elements.selectSector.appendChild(option);
-        });
-
-        // Load batches
-        const batches = await BatchService.getAll();
-        elements.selectBatch.innerHTML = '<option value="">Sin asignar</option>';
-        batches.forEach(b => {
-            const option = document.createElement('option');
-            option.value = b.id;
-            option.textContent = `${b.code} - ${b.variety}`;
-            elements.selectBatch.appendChild(option);
-        });
-
-        console.log('✅ Metadata options loaded');
-    } catch (error) {
-        console.error('❌ Error loading metadata:', error);
-        showToast('Error al cargar datos', 'error');
-    }
-}
-
-// Toggle metadata panel
-function toggleMetadataPanel() {
-    elements.metadataPanel.classList.toggle('collapsed');
-}
-
-// Open history modal
-async function openHistoryModal() {
-    elements.historyModal.classList.remove('hidden');
-    await loadHistoryList();
-}
-
-// Close history modal
-function closeHistoryModal() {
-    elements.historyModal.classList.add('hidden');
-}
-
-// Load and display history list
-async function loadHistoryList() {
-    try {
-        elements.historyList.innerHTML = '<div class="history-loading">Cargando...</div>';
-
-        // Get filter values
-        const harvesterSelectedId = elements.historyFilterHarvester.dataset.selectedId;
-        const harvesterText = elements.historyFilterHarvester.value.trim().toLowerCase();
-        const date = elements.historyFilterDate.value || null;
-
-        // Fetch recent analysis
-        let analyses = await AnalysisService.getRecent(50);
-
-        // Apply filters
-        // Priority to ID match if selected from dropdown
-        if (harvesterSelectedId) {
-            analyses = analyses.filter(a => a.harvester_id === harvesterSelectedId);
-        } else if (harvesterText) {
-            // Fallback to text search if typed manually
-            analyses = analyses.filter(a =>
-                a.harvester?.name.toLowerCase().includes(harvesterText)
-            );
-        }
-        if (date) {
-            analyses = analyses.filter(a => a.created_at.startsWith(date));
-        }
-
-        // Display results
-        if (analyses.length === 0) {
-            elements.historyList.innerHTML = '<div class="history-loading">No hay análisis registrados</div>';
-            return;
-        }
-
-        elements.historyList.innerHTML = '';
-        analyses.forEach(analysis => {
-            const item = createHistoryItem(analysis);
-            elements.historyList.appendChild(item);
-        });
-
-    } catch (error) {
-        console.error('Error loading history:', error);
-        elements.historyList.innerHTML = '<div class="history-loading">Error al cargar el historial</div>';
-    }
-}
-
-// Create history item HTML
-function createHistoryItem(analysis) {
-    const item = document.createElement('div');
-    item.className = 'history-item';
-    item.dataset.id = analysis.id;
-
-    const date = new Date(analysis.created_at);
-    const dateStr = date.toLocaleString('es-AR', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-    });
-
-    item.innerHTML = `
-        <div class="history-item-header">
-            <span class="history-item-date">${dateStr}</span>
-            <div class="history-item-actions">
-                <button class="btn-history-action edit" data-id="${analysis.id}">Editar</button>
-                <button class="btn-history-action delete" data-id="${analysis.id}">Eliminar</button>
-            </div>
-        </div>
-        <div class="history-item-info">
-            <div class="history-info-row">
-                <span class="history-info-label">Estacas</span>
-                <span class="history-info-value">${analysis.total_confirmed}</span>
-            </div>
-            <div class="history-info-row">
-                <span class="history-info-label">Cosechador</span>
-                <span class="history-info-value">${analysis.harvester?.name || 'Sin asignar'}</span>
-            </div>
-            <div class="history-info-row">
-                <span class="history-info-label">Sector</span>
-                <span class="history-info-value">${analysis.sector?.name || 'Sin asignar'}</span>
-            </div>
-            <div class="history-info-row">
-                <span class="history-info-label">Lote</span>
-                <span class="history-info-value">${analysis.batch?.code || 'Sin asignar'}</span>
-            </div>
-        </div>
-    `;
-
-    // Add event listeners
-    item.querySelector('.edit').addEventListener('click', () => editAnalysis(analysis.id));
-    item.querySelector('.delete').addEventListener('click', () => deleteAnalysis(analysis.id));
-
-    return item;
-}
-
-// Edit analysis (open edit modal - simplified for now)
-async function editAnalysis(id) {
-    showToast('Función de edición en desarrollo');
-    // TODO: Implement edit modal
-}
-
-// Delete analysis
-async function deleteAnalysis(id) {
-    if (!confirm('¿Estás seguro de eliminar este análisis?')) return;
-
-    try {
-        await AnalysisService.delete(id);
-        showToast('✅ Análisis eliminado');
-        await loadHistoryList();
-    } catch (error) {
-        console.error('Error deleting analysis:', error);
-        showToast('❌ Error al eliminar', 'error');
-    }
-}
-
-// Save current analysis to Supabase
-async function saveAnalysis() {
-    if (!state.image || state.totalConfirmed === 0) {
-        showToast('No hay análisis para guardar');
-        return;
-    }
-
-    // Validate required field: harvester
-    if (!elements.selectHarvester.value) {
-        showToast('⚠️ Debe seleccionar un cosechador', 'error');
-        elements.selectHarvester.style.borderColor = '#ef4444';
-        elements.selectHarvester.focus();
-
-        // Remove error highlight after 3 seconds
-        setTimeout(() => {
-            elements.selectHarvester.style.borderColor = '';
-        }, 3000);
-        return;
-    }
-
-
-    try {
-        elements.btnSaveAnalysis.classList.add('saving');
-        elements.btnSaveAnalysis.textContent = 'GUARDANDO...';
-
-        // Get global config price
-        const { data: config } = await supabase.from('config').select('price_per_stake').single();
-        const pricePerStake = config?.price_per_stake || 0;
-
-        const analysisData = {
-            harvesterId: elements.selectHarvester.value || null,
-            sectorId: elements.selectSector.value || null,
-            batchId: elements.selectBatch.value || null,
-            notes: elements.inputNotes.value || null,
-            totalConfirmed: state.totalConfirmed,
-            iaBase: state.iaBase,
-            manuallyAccepted: state.manuallyAccepted || 0,
-            manuallyAdded: state.manuallyAdded || 0,
-            rejected: state.rejectedDetections.length,
-            doubtsReviewed: state.initialDoubtsCount || 0,
-            imageWidth: state.image.width,
-            imageHeight: state.image.height,
-            processingTime: state.processingTime || 0
-        };
-
-        // Save analysis
-        const savedAnalysis = await AnalysisService.save(analysisData);
-
-        // Update harvester stats if assigned
-        if (analysisData.harvesterId) {
-            await HarvesterService.updateStats(analysisData.harvesterId, pricePerStake);
-        }
-
-        // Update batch total if assigned
-        if (analysisData.batchId) {
-            await BatchService.updateTotal(analysisData.batchId);
-        }
-
-        elements.btnSaveAnalysis.classList.remove('saving');
-        elements.btnSaveAnalysis.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg> GUARDADO';
-        showToast('✅ Análisis guardado');
-
-        // Smooth transition to new analysis
-        setTimeout(() => {
-            // Fade out current screen
-            elements.screenResult.style.transition = 'opacity 0.5s ease';
-            elements.screenResult.style.opacity = '0';
-
-            setTimeout(() => {
-                elements.screenResult.style.opacity = '1';
-                elements.screenResult.style.transition = '';
-                newAnalysis();
-            }, 500);
-        }, 800);
-
-
-    } catch (error) {
-        console.error('❌ Error saving analysis:', error);
-        elements.btnSaveAnalysis.classList.remove('saving');
-        elements.btnSaveAnalysis.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> GUARDAR';
-        showToast('❌ Error al guardar: ' + error.message, 'error');
-    }
-}
-
 // ===============================================
 // Initialize
 // ===============================================
-async function init() {
-    createParticles(); // Add animated background
+function init() {
+    // Start Particles
+    if (elements.bgParticles) {
+        new ParticleSystem(elements.bgParticles, 40);
+    }
+
     showScreen('upload');
     elements.footer.style.display = 'none';
     initEventListeners();
     setStatus('LISTO', 'active');
-
-    // Test Supabase connection
-    const isConnected = await testConnection();
-    if (isConnected) {
-        console.log('🗄️ Backend conectado (Supabase)');
-        // Load metadata options
-        await loadMetadataOptions();
-    } else {
-        console.warn('⚠️ Backend no disponible, trabajando en modo offline');
-    }
 
     console.log('🌲 EstacaScan initialized');
     console.log('📦 Model will be loaded on first image upload');
