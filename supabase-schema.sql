@@ -1,7 +1,8 @@
 -- ===============================================
--- EstacaScan - Supabase Database Schema v2
+-- EstacaScan - Supabase Database Schema v2 (Updated)
 -- CORREGIDO: Sectores (ubicación) vs Lotes (grupos de estacas)
 -- Pagos DIARIOS, no por período
+-- Incluye: Hashes de imagen y Vista corregida con IDs
 -- ===============================================
 
 -- Enable UUID extension
@@ -157,6 +158,9 @@ CREATE TABLE IF NOT EXISTS analysis (
   image_width INT,
   image_height INT,
   
+  -- Hash de la imagen para detectar duplicados (agregado)
+  image_hash TEXT,
+  
   -- Performance
   processing_time_ms INT,
   
@@ -169,6 +173,7 @@ CREATE INDEX idx_analysis_harvester ON analysis(harvester_id);
 CREATE INDEX idx_analysis_sector ON analysis(sector_id);
 CREATE INDEX idx_analysis_batch ON analysis(batch_id);
 CREATE INDEX idx_analysis_created ON analysis(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_analysis_image_hash ON analysis(image_hash);
 -- Para filtrar por día usaremos la columna created_at directamente
 
 -- ===============================================
@@ -275,14 +280,17 @@ ON CONFLICT (code) DO NOTHING;
 -- Helper Views
 -- ===============================================
 
--- Vista: Análisis con nombres legibles
+-- Vista: Análisis con nombres legibles (UPDATED con IDs y Hash)
 CREATE OR REPLACE VIEW v_analysis_detailed AS
 SELECT 
   a.id,
   a.created_at,
+  a.harvester_id, -- Needed for filtering
   h.name as harvester_name,
+  a.sector_id,    -- Needed
   s.name as sector_name,
   s.code as sector_code,
+  a.batch_id,     -- Needed
   b.code as batch_code,
   b.variety as batch_variety,
   a.total_confirmed,
@@ -290,7 +298,8 @@ SELECT
   a.manually_accepted,
   a.manually_added,
   a.rejected,
-  a.notes
+  a.notes,
+  a.image_hash -- Image duplication check
 FROM analysis a
 LEFT JOIN harvesters h ON a.harvester_id = h.id
 LEFT JOIN sectors s ON a.sector_id = s.id

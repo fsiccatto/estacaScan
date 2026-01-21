@@ -1541,7 +1541,7 @@ async function loadHistoryList() {
         } else if (harvesterText) {
             // Fallback to text search if typed manually
             analyses = analyses.filter(a =>
-                a.harvester?.name.toLowerCase().includes(harvesterText)
+                a.harvester_name.toLowerCase().includes(harvesterText)
             );
         }
         if (date) {
@@ -1596,15 +1596,15 @@ function createHistoryItem(analysis) {
             </div>
             <div class="history-info-row">
                 <span class="history-info-label">Cosechador</span>
-                <span class="history-info-value">${analysis.harvester?.name || 'Sin asignar'}</span>
+                <span class="history-info-value">${analysis.harvester_name || 'Sin asignar'}</span>
             </div>
             <div class="history-info-row">
                 <span class="history-info-label">Sector</span>
-                <span class="history-info-value">${analysis.sector?.name || 'Sin asignar'}</span>
+                <span class="history-info-value">${analysis.sector_name || 'Sin asignar'}</span>
             </div>
             <div class="history-info-row">
                 <span class="history-info-label">Lote</span>
-                <span class="history-info-value">${analysis.batch?.code || 'Sin asignar'}</span>
+                <span class="history-info-value">${analysis.batch_code || 'Sin asignar'}</span>
             </div>
         </div>
     `;
@@ -1678,6 +1678,7 @@ async function saveAnalysis() {
             doubtsReviewed: state.initialDoubtsCount || 0,
             imageWidth: state.image.width,
             imageHeight: state.image.height,
+            imageHash: state.lastImageHash, // Enviar hash
             processingTime: state.processingTime || 0
         };
 
