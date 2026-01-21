@@ -3,6 +3,8 @@
  * Aplicación web para detectar y contar estacas usando YOLO v8 con ONNX Runtime Web
  */
 
+import { ParticleSystem } from './particles.js';
+
 // ===============================================
 // Configuration
 // ===============================================
@@ -400,6 +402,9 @@ const modelManager = new ONNXModelManager();
 // DOM Elements
 // ===============================================
 const elements = {
+    // Particles
+    bgParticles: document.getElementById('bg-particles'),
+
     // Screens
     screenUpload: document.getElementById('screen-upload'),
     screenLoading: document.getElementById('screen-loading'),
@@ -1161,7 +1166,7 @@ function initEventListeners() {
 
     elements.canvas.addEventListener('touchstart', (e) => {
         e.preventDefault(); // Prevent browser gestures
-        
+
         if (e.touches.length === 1) {
             // Single finger - pan
             isTouchDragging = true;
@@ -1179,7 +1184,7 @@ function initEventListeners() {
 
     elements.canvas.addEventListener('touchmove', (e) => {
         e.preventDefault();
-        
+
         // Throttle for performance
         const now = Date.now();
         if (now - lastDrawTime < TOUCH_THROTTLE_MS) return;
@@ -1206,16 +1211,16 @@ function initEventListeners() {
         } else if (e.touches.length === 2) {
             // Pinch to zoom
             const currentDistance = getTouchDistance(e.touches);
-            
+
             if (lastTouchDistance > 0) {
                 const scale = currentDistance / lastTouchDistance;
                 const newZoom = state.zoom * scale;
-                
+
                 // Clamp zoom
                 state.zoom = Math.max(0.3, Math.min(5, newZoom));
                 drawCanvas();
             }
-            
+
             lastTouchDistance = currentDistance;
         }
     }, { passive: false });
@@ -1271,6 +1276,11 @@ function initEventListeners() {
 // Initialize
 // ===============================================
 function init() {
+    // Start Particles
+    if (elements.bgParticles) {
+        new ParticleSystem(elements.bgParticles, 40);
+    }
+
     showScreen('upload');
     elements.footer.style.display = 'none';
     initEventListeners();

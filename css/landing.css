@@ -81,32 +81,15 @@ body {
 
 .particle {
     position: absolute;
-    width: 4px;
-    height: 4px;
+    /* width/height se definen en JS para variedad */
     background: var(--color-primary);
     border-radius: 50%;
     opacity: 0.3;
-    animation: float-particle 15s infinite ease-in-out;
+    pointer-events: none;
+    will-change: transform; /* Optimización para GPU */
 }
 
-@keyframes float-particle {
-    0%, 100% {
-        transform: translateY(0) translateX(0);
-        opacity: 0.3;
-    }
-    25% {
-        transform: translateY(-30px) translateX(10px);
-        opacity: 0.5;
-    }
-    50% {
-        transform: translateY(-20px) translateX(-10px);
-        opacity: 0.3;
-    }
-    75% {
-        transform: translateY(-40px) translateX(5px);
-        opacity: 0.4;
-    }
-}
+/* @keyframes float-particle eliminada, ahora controlado por JS */
 
 /* Main Content */
 .landing-content {

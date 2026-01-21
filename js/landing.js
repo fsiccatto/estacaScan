@@ -26,17 +26,124 @@ const elements = {
 // ===============================================
 // Background Particles
 // ===============================================
-function createParticles() {
-    const count = 20;
-    for (let i = 0; i < count; i++) {
-        const particle = document.createElement('div');
-        particle.className = 'particle';
-        particle.style.left = `${Math.random() * 100}%`;
-        particle.style.top = `${Math.random() * 100}%`;
-        particle.style.animationDelay = `${Math.random() * 15}s`;
-        particle.style.animationDuration = `${10 + Math.random() * 10}s`;
-        elements.bgParticles.appendChild(particle);
+// ===============================================
+// Background Particles System
+// ===============================================
+class ParticleSystem {
+    constructor(container, count = 30) {
+        this.container = container;
+        this.count = count;
+        this.particles = [];
+        this.mouseX = -1000;
+        this.mouseY = -1000;
+        this.init();
     }
+
+    init() {
+        // Create particles
+        for (let i = 0; i < this.count; i++) {
+            this.createParticle();
+        }
+
+        // Mouse tracking
+        document.addEventListener('mousemove', (e) => {
+            this.mouseX = e.clientX;
+            this.mouseY = e.clientY;
+        });
+
+        document.addEventListener('mouseleave', () => {
+            this.mouseX = -1000;
+            this.mouseY = -1000;
+        });
+
+        // Start loop
+        this.animate();
+    }
+
+    createParticle() {
+        const el = document.createElement('div');
+        el.className = 'particle';
+
+        // Random properties
+        const x = Math.random() * window.innerWidth;
+        const y = Math.random() * window.innerHeight;
+        const size = 2 + Math.random() * 4; // Variedad de tamaños
+
+        // Style
+        el.style.width = `${size}px`;
+        el.style.height = `${size}px`;
+        el.style.left = '0';
+        el.style.top = '0';
+        // Removemos la animación CSS via estilo en línea por si acaso, 
+        // aunque lo ideal es quitarla del CSS
+        el.style.animation = 'none';
+
+        this.container.appendChild(el);
+
+        this.particles.push({
+            el,
+            x: x,
+            y: y,
+            baseX: x,
+            baseY: y,
+            vx: (Math.random() - 0.5) * 0.5, // Velocidad flotante lenta
+            vy: (Math.random() - 0.5) * 0.5,
+            size: size,
+            friction: 0.9,
+            ease: 0.1
+        });
+    }
+
+    animate() {
+        // Dimensions check for responsiveness
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+
+        this.particles.forEach(p => {
+            // 1. Natural floating movement
+            p.baseX += p.vx;
+            p.baseY += p.vy;
+
+            // Bounce off edges
+            if (p.baseX < 0 || p.baseX > width) p.vx *= -1;
+            if (p.baseY < 0 || p.baseY > height) p.vy *= -1;
+
+            // 2. Magnetic Repulsion (Opposite magnets)
+            const dx = this.mouseX - p.baseX;
+            const dy = this.mouseY - p.baseY;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            const radius = 200; // Radio de influencia del mouse
+
+            let targetX = p.baseX;
+            let targetY = p.baseY;
+
+            if (distance < radius) {
+                // Calcular fuerza de repulsión (más cerca = más fuerza)
+                const force = (radius - distance) / radius;
+                const angle = Math.atan2(dy, dx);
+
+                // Mover en dirección OPUESTA al mouse
+                const moveX = Math.cos(angle) * force * 150; // Fuerza max 150px
+                const moveY = Math.sin(angle) * force * 150;
+
+                targetX -= moveX;
+                targetY -= moveY;
+            }
+
+            // 3. Smooth transition (Linear Interpolation)
+            p.x += (targetX - p.x) * p.ease;
+            p.y += (targetY - p.y) * p.ease;
+
+            // Update DOM
+            p.el.style.transform = `translate(${p.x}px, ${p.y}px)`;
+        });
+
+        requestAnimationFrame(() => this.animate());
+    }
+}
+
+function createParticles() {
+    new ParticleSystem(elements.bgParticles, 40); // Increased density slightly
 }
 
 // ===============================================
